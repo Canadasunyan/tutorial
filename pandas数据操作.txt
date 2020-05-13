@@ -1,0 +1,46 @@
+csv文件：
+表一：
+	name	key1	key2
+A	Allen	a1	a2
+B	Bob	b1	b2
+C	Celina	c1	c2
+
+1. 打开读取文件:
+    import pandas as pd
+    df = pd.read_csv('path/file.csv', usecols={'name', key1'}, dtype={'name': str, 'key1': int}, encoding='utf8')
+2. 生成Dataframe:
+    people=pd.DataFrame(np.array(['Allen', a1, a2], ['Bob', b1, b2], ['Celina', c1, c2]), columns=['name', 'key1', 'key2'], index=['A','B','C'])
+
+2. 选择特定行:
+    df = df[df['key1']==a1]
+    df = df[(df['key1']==a1) & (df['key2']==a2)]
+    df = df[(df['key1']==a1) | (df['key1']==b1)]
+    
+3. 选择特定列:
+    df = df['key1']
+
+4. 分组:
+    grouped=df['key2'].groupby(df['key1'])
+    grouped.mean()
+    grouped.sum()
+    grouped.count()
+    df.groupby(['key1','key2'], mapping, axis=1)
+    '''
+    mapping (dict): 对列进行进一步分组
+    axis(bool): 行操作还是列操作
+    '''
+    # 对group by后的内容进行操作，如转换成字典: 
+    piece=dict(list(df.groupby('key1'))) -> dict(pd.Dataframe)
+
+5. 聚合运算
+    计算pd.Series或Dataframe某列
+    df['key1'].agg('mean')
+    df['key1'].agg(['mean', 'max'])
+    df['key1'].agg([('Mean', 'mean'), ('Std', 'std')])
+    # count, sum, mean, median, std, var, min, max, prod(非NA值的积), first(第一个非NA的值), last
+
+
+
+
+
+
