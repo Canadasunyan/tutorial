@@ -1,3 +1,60 @@
 plt.legend(loc='best',frameon=False)
 fig, ax = plt.subplots()
 1. 添加某点标记：ax.annotate('Zhongshan', (20, 4.90))
+plt.tight_layout()
+plt.xticks(df['week'], ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
+
+from pyecharts import Tree
+data = [
+    {
+        "children": [
+            {
+                "children": [],
+                "name": "GDP: 22438"
+            },
+            {
+                "children": [
+                    {
+                        "children": [],
+                        "name": "Latitude: 22.617"
+                    },
+                    {
+                        "children": [],
+                        "name": "Longitude: 114.067"
+                    }
+                ],
+                "name": "Location"
+            },
+            {
+                "children": [
+                    {
+                        
+                        "children": [],
+                        "name": "Residents: 11,910,000"
+                    },
+                    {
+                        "children": [],
+                        "name": "Non-residents: 9,920,000"
+                    }
+                ],
+                "name": "Population"
+            },
+            {
+                "children": [],
+                "name": "Resource insentive? No"
+            },
+            {
+                "children": [],
+                "name": "OEM based city? Yes"
+            },
+            {
+                "children": [],
+                "name": "Capital or autonomous? Yes"
+            }
+        ],
+        "name": "Shenzhen"
+    }
+]
+tree = Tree(width=1600, height=800)
+tree.add("", data, tree_collapse_interval=2, tree_label_text_size=20, tree_leaves_text_size=20)
+tree.render('E:/fuck.html')

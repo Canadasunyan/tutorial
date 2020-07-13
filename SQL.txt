@@ -1,0 +1,14 @@
+# sum all the orders by day in week
+SELECT count(distinct Waybill_id) FROM [Waybil_Data].[dbo].[f_shenzhen_waybill_both_ALL] GROUP BY datepart(weekday, [Pickup_tm])
+
+# sum all the orders within 24 hours
+SELECT count(distinct Waybill_id) FROM [Waybil_Data].[dbo].[f_shenzhen_waybill_both_ALL] GROUP BY datename(Hour, [Pickup_tm])
+
+# select the earliest / latest time of the record
+select * FROM [Waybil_Data].[dbo].[f_shenzhen_waybill_both_ALL] where Pickup_tm=(select min(Pickup_tm) from [Waybil_Data].[dbo].[f_shenzhen_waybill_both_ALL])
+
+# calculate the month volume
+select count(distinct Waybill_id), month([Pickup_tm]) from [Waybil_Data].[dbo].[f_shenzhen_waybill_both_ALL]  group by month([Pickup_tm])
+
+# calculate the week volume
+select count(distinct Waybill_id),datename(week,[Pickup_tm]) from [Waybil_Data].[dbo].[f_shenzhen_waybill_both_ALL]  group by datename(week,[Pickup_tm])
