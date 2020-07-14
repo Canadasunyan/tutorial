@@ -1,4 +1,4 @@
-# Pytorch基本操作
+# Pytorch深度学习
 
 ### 1.1 新建Tensor
 
@@ -236,9 +236,15 @@ class Net(nn.module):
 
 ## 4. RNN
 
-### 4.1 GRU 
+### 4.1 LSTM
 
 #### 4.1.1 原理
+
+​	
+
+### 4.2 GRU 
+
+#### 4.2.1 原理
 
 ​	GRU（Gate Recurrent Unit）是循环神经网络（Recurrent Neural Network, RNN）的一种。和LSTM（Long-Short Term Memory）一样，也是为了解决长期记忆和反向传播中的梯度等问题而提出来的。
 
@@ -252,7 +258,11 @@ $$
 
 首先，我们先通过上一个传输下来的状态$h^{t-1}$和当前节点的输入$x^t$来获取两个门控状态。如下图2-2所示，其中 $r$为控制重置的门控（reset gate）， $z$为控制更新的门控（update gate）。
 
-<div align="center"><img src="C:\Users\ROG\Desktop\v2-5b805241ab36e126c4b06b903f148ffa_r.jpg" alt="v2-5b805241ab36e126c4b06b903f148ffa_r" style="zoom: 33%;" />
+![v2-5b805241ab36e126c4b06b903f148ffa_r](C:\Users\ROG\Desktop\v2-5b805241ab36e126c4b06b903f148ffa_r.jpg)
+
+
+
+
 ​	运算定义：
 
 $$
@@ -307,7 +317,7 @@ h^t=(1-z) \odot h^{t-1} + z \odot h^{'}
 $$
 ​	GRU很聪明的一点就在于使用了同一个门控就同时可以进行遗忘和选择记忆 (LSTM则要使用多个门控), 这里的遗忘$z$和选择$(1-z)$是联动的。也就是说，对于传递进来的维度信息，我们会进行选择性遗忘，则遗忘了多少权重，我们就会使用包含当前输入的$h^{'}$中所对应的权重进行弥补$(1-z)$ , 以保持一种”恒定“状态。
 
-#### 4.1.2 Pytorch实现
+#### 4.2.2 Pytorch实现
 
 1. Embedding: 将词映射为特定维度的向量
 
