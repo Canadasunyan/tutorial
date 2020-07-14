@@ -1,6 +1,6 @@
-# Pytorch数据操作
+# Pytorch基本操作
 
-### 0.1 新建Tensor
+### 1.1 新建Tensor
 
 ```
 import torch
@@ -42,14 +42,14 @@ torch.linspace(start, end, steps=100, …)  #返回从start到end, 间隔中的�
 torch.logspace(start, end, steps=100, …) #返回1-d tensor ，从10^start到10^end的steps个对数间隔
 ```
 
-### 0.2 Tensor操作
+### 1.2 Tensor操作
 
 ```
 a.size()
 a[0, 1] = 10
 ```
 
-### 0.3 数据类型转化
+### 1.3 数据类型转化
 
 ```
 b = a.numpy()
@@ -236,7 +236,201 @@ class Net(nn.module):
 
 ## 4. RNN
 
-![v2-49244046a83e30ef2383b94644bf0f31_r](https://raw.githubusercontent.com/Canadasunyan/pics/master/v2-49244046a83e30ef2383b94644bf0f31_r.png)
+### 4.1 GRU 
+
+#### 4.1.1 原理
+
+​	GRU（Gate Recurrent Unit）是循环神经网络（Recurrent Neural Network, RNN）的一种。和LSTM（Long-Short Term Memory）一样，也是为了解决长期记忆和反向传播中的梯度等问题而提出来的。
+
+​	GRU和LSTM在很多情况下实验效果与LSTM相似，但是更易于计算。
+
+​	GRU的输入输出结构与普通的RNN相同, 有一个当前的输入 $x^t$，和上一个节点传递下来的隐状态 $h^{t-1}$，这个隐状态包含了之前节点的相关信息。结合二者，GRU会得到当前隐藏节点的输出 $y^t$ 和传递给下一个节点的隐状态 $h^t$ 。
+$$
+GRU(h^{t-1},x^t)\rightarrow h^t,y^t
+$$
+<img src="https://raw.githubusercontent.com/Canadasunyan/pics/master/v2-49244046a83e30ef2383b94644bf0f31_r.png" alt="v2-49244046a83e30ef2383b94644bf0f31_r" style="zoom: 33%;" />
+
+首先，我们先通过上一个传输下来的状态$h^{t-1}$和当前节点的输入$x^t$来获取两个门控状态。如下图2-2所示，其中 $r$为控制重置的门控（reset gate）， $z$为控制更新的门控（update gate）。
+
+<div align="center"><img src="C:\Users\ROG\Desktop\v2-5b805241ab36e126c4b06b903f148ffa_r.jpg" alt="v2-5b805241ab36e126c4b06b903f148ffa_r" style="zoom: 33%;" />
+​	运算定义：
+
+$$
+Hadamard \ Product: \\
+x \odot y= \left[
+\matrix{
+  x_{11}*y_{11} & x_{12}*y_{12} & ... & x_{1n}*y_{1n} \\
+  x_{21}*y_{21} & x_{22}*y_{22} & ... & x_{2n}*y_{2n} \\
+  ... & ... & ... & ...\\
+  x_{m1}*y_{m1} & x_{m2}*y_{m2} & ... & x_{mn}*y_{mn} 
+}
+\right]
+$$
+
+
+$$
+Matrix Addition: \\
+x \oplus y= \left[
+\matrix{
+  x_{11}+y_{11} & x_{12}+y_{12} & ... & x_{1n}+y_{1n} \\
+  x_{21}+y_{21} & x_{22}+y_{22} & ... & x_{2n}+y_{2n} \\
+  ... & ... & ... & ...\\
+  x_{m1}+y_{m1} & x_{m2}+y_{m2} & ... & x_{mn}+y_{mn} 
+}
+\right] \\
+$$
+​	得到门控信号之后，首先使用重置门控来得到"重置"之后的数据：
+$$
+r=sigmoid(W^r\left[
+\matrix{
+  x^{t} \\
+  h^{t-1}}
+\right]) \in (0,1) \\
+z=sigmoid(W^z\left[
+\matrix{
+  x^{t} \\
+  h^{t-1}}
+\right]) \in (0,1) \\
+h^{t-1'}=h^{t-1} \odot r
+$$
+​	这里的$h^{'}$主要是包含了当前输入的$x^t$数据。有针对性地对$h^{'}$添加到当前的隐藏状态，相当于”记忆了当前时刻的状态“。类似于LSTM的选择记忆阶段:
+$$
+h^{'}=tanh(W\left[
+\matrix{
+  x^{t} \\
+  h^{t-1'}}
+\right]) \\
+$$
+​	最后介绍GRU最关键的一个步骤，可以称之为”更新记忆“阶段。在这个阶段，我们同时进行了遗忘了记忆两个步骤。我们使用了先前得到的更新门控。$z$ 越大，信息更新越快:
+$$
+h^t=(1-z) \odot h^{t-1} + z \odot h^{'}
+$$
+​	GRU很聪明的一点就在于使用了同一个门控就同时可以进行遗忘和选择记忆 (LSTM则要使用多个门控), 这里的遗忘$z$和选择$(1-z)$是联动的。也就是说，对于传递进来的维度信息，我们会进行选择性遗忘，则遗忘了多少权重，我们就会使用包含当前输入的$h^{'}$中所对应的权重进行弥补$(1-z)$ , 以保持一种”恒定“状态。
+
+#### 4.1.2 Pytorch实现
+
+1. Embedding: 将词映射为特定维度的向量
+
+```
+embed = torch.nn.Embedding(n_vocabulary,embedding_size)
+```
+
+2. Tokenize: 标准化
+
+```
+['I am a boy.','I am very lucky.','Fuck you all!']
+```
+
+​		(1) 小写化:
+
+```
+[['i','am','a','boy','.'],['i','am','very','lucky','.'],['fuck','you','all','!']]
+```
+
+​		(2) 向量化:
+
+```
+batch = [[1,2,3,4,5], [1,2,6,7,5], [8,9,10,11]]
+```
+
+​		(3) 结尾加EOS (=-1):
+
+```
+batch = [[1,2,3,4,5,-1], [1,2,6,7,5,-1], [8,9,10,11,-1]]
+lens = [6,6,5]
+```
+
+​		(4) 使用padding (=0) 补齐:
+
+```
+batch = [[1,2,3,4,5,-1], [1,2,6,7,5,-1], [8,9,10,11,-1,0]]
+```
+
+​		(5) 转换为batch序列:
+
+```
+batch = list(itertools.zip_longest(batch,fillvalue=PAD))
+# fillvalue就是要填充的值，强制转成list
+batch = [[1,1,8],[2,2,9],[3,6,10],[4,7,11],[5,5,-1],[-1,-1,0]]
+batch=torch.LongTensor(batch)
+```
+
+3. 使用建立了的embedding直接通过batch取词向量:
+
+```
+embedding_size = 6
+tensor([[[-0.2699,  0.7401, -0.8000,  0.0472,  0.9032, -0.0902],
+         [-0.2699,  0.7401, -0.8000,  0.0472,  0.9032, -0.0902],
+         [ 0.1146, -0.8077, -1.4957, -1.5407,  0.3755, -0.6805]],
+
+        [[-0.2675,  1.8021,  1.4966,  0.6988,  1.4770,  1.1235],
+         [-0.2675,  1.8021,  1.4966,  0.6988,  1.4770,  1.1235],
+         [-0.0387,  0.8401,  1.6871,  0.3057, -0.8248, -0.1326]],
+
+        [[-0.0387,  0.8401,  1.6871,  0.3057, -0.8248, -0.1326],
+         [-0.3745, -1.9178, -0.2928,  0.6510,  0.9621, -1.3871],
+         [-0.6739,  0.3931,  0.1464,  1.4965, -0.9210, -0.0995]],
+
+        [[-0.2675,  1.8021,  1.4966,  0.6988,  1.4770,  1.1235],
+         [-0.7411,  0.7948, -1.5864,  0.1176,  0.0789, -0.3376],
+         [-0.3745, -1.9178, -0.2928,  0.6510,  0.9621, -1.3871]],
+
+        [[-0.3745, -1.9178, -0.2928,  0.6510,  0.9621, -1.3871],
+         [-0.3745, -1.9178, -0.2928,  0.6510,  0.9621, -1.3871],
+         [ 0.2837,  0.5629,  1.0398,  2.0679, -1.0122, -0.2714]],
+
+        [[ 0.2837,  0.5629,  1.0398,  2.0679, -1.0122, -0.2714],
+         [ 0.2837,  0.5629,  1.0398,  2.0679, -1.0122, -0.2714],
+         [ 0.2242, -1.2474,  0.3882,  0.2814, -0.4796,  0.3732]]],
+       grad_fn=<EmbeddingBackward>)
+# tensor.size = [seq_len,batch_size,embedding_size]
+```
+
+4. 取词向量放入GRU
+
+```
+# 这里的input_size就是词向量的维度，hidden_size就是h的维度，这两个一般相同就可以
+# n_layers是GRU的层数,多层为RMLP
+# 并不需要指定时间步数，也即seq_len，这是因为，GRU和LSTM都实现了自身的迭代。
+import torch.nn as nn
+gru = nn.GRU(input_size=50, hidden_size=50, n_layers=1)
+# 将3个词映射为50维向量
+embed = nn.Embedding(3, 50)
+# batch = 'i love you' & 'eat the apple'
+x = torch.LongTensor([[0, 1, 2], [3, 4, 5]])
+x = list(itertools.zip_longest(x,fillvalue=PAD))
+x_embed = embed(x)
+```
+
+```
+>>> x
+[[0,3], [1,4], [2,5]]
+>>> x_embed.size()
+torch.Size([3, 2, 50])
+```
+
+```
+# input: [seq_len, batch, input_size] (batch_first = False)
+
+# input: [batch, seq_len, input_size] (batch_first = True)
+
+# h0: [n_layers* n_directions, batch, hidden_size]
+
+# output: [seq_len, batch, num_directions * hidden_size]
+
+# h1: [n_layers * n_directions, batch, hidden_size]
+
+gru = nn.GRU(input_size = 3, hidden_size = 10, n_layers = 2)
+input = x_embed
+# 单向GRU, n_directions = 1
+h0 = torch.randn(2 * 1, batch = 2, hidden_size = 10)
+output, h1 = gru(input,h0)
+```
+
+```
+>>> print(output.shape,h1.shape)
+torch.Size([3, 2, 10]) torch.Size([2, 2, 10])
+```
 
 # Pytorch调参
 
@@ -557,7 +751,7 @@ opt_RMSprop = torch.optim.RMSprop(net_RMSprop.parameters(), lr=LR, alpha=0.9)
 
 #### 2.2.5 Adam
 
-​	Adam（Adaptive Moment Estimation）算法是将Momentum算法和RMSProp算法结合起来使用的一种算法，我们所使用的参数基本和上面讲的一致，在训练的最开始我们需要初始化梯度的累积量和平方累积量:
+​	Adam（Adaptive Moment Estimation）算法是将Momentum算法和RMSProp算法结合起来使用的一种算法，所使用的参数基本和上面讲的一致，在训练的最开始我们需要初始化梯度的累积量和平方累积量:
 $$
 \begin{eqnarray*}
 s_{dW}=s_{dW}=v_{dW}=v_{dW}=0 \tag{1}\\
@@ -573,25 +767,6 @@ $$
 ```
 opt_Adam = torch.optim.Adam(net_Adam.parameters(), lr=LR, betas=(0.9, 0.99))
 ```
-
-
-
-```
-piece=dict(list(df.groupby('key1'))) -> dict(pd.Dataframe)
-dict = df.set_index('name').T.to_dict('list')
-dict = df.set_index('key1')['key2'].T.to_dict()
-dict = df.set_index(['key1', 'key2'])['value'].T.to_dict()
-```
-
-计算pd.Series或Dataframe某列
-
-```
-df['key1'].agg('mean')
-df['key1'].agg(['mean', 'max'])
-df['key1'].agg([('Mean', 'mean'), ('Std', 'std')])
-```
-
-count, sum, mean, median, std, var, min, max, prod(非NA值的积), first(第一个非NA的值), last
 
 # 源码细节
 
@@ -765,6 +940,11 @@ print(net.linear.weight)
 ​	将数据在cpu和gpu之间切换，类似的还有数据类型的切换float()和double():
 
 ```
+devie = torch.device('cuda')
+model.to(device)
+```
+
+```
 def cuda(self, device=None):
     r"""Moves all model parameters and buffers to the GPU.
     Arguments:
@@ -930,105 +1110,15 @@ def zero_grad(self):
 
 
 
-```
->>>
-	name	key1	key2	key3	key4
-0	Allen	11		12		13		14
-1 	Bob		21		22		23		24
-2	David	NaN		NaN		43		44
-3	Ella	NaN		NaN		53		54
-```
 
-```
-pd.merge(df, df3, on='name', how='outer')
-```
 
-```
->>>
-	name	key1	key2	key3	key4
-0	Allen	11		12		13		14
-1 	Bob		21		22		23		24
-2	Celina	31		32		NaN		NaN
-3	David	NaN		NaN		43		44
-4	Ella	NaN		NaN		53		54
-```
 
-#### concat函数: 轴向连接, 单纯地把两个表拼在一起, 默认axis=0, 输出列顺序可能打乱
-```
-pd.concat([df, df3], ,ignore_index=True)
-```
 
-```
->>>
-	key1	key2	key3	key4	name
-0	11		12		NaN		NaN		Allen
-1	21		22		NaN		NaN		Bob
-2	31		32		NaN		NaN		Celina
-3	NaN		NaN		13		14 		Allen
-4	NaN		NaN		23		24		Bob
-5	NaN		NaN		33		34		David
-6	NaN		NaN		43		44		Ellen
-```
 
-```
-pd.concat([df, df3], axis=1)
-```
 
-```
->>>
-	name	key1	key2	name	key3	key4
-0	Allen	11		12		Allen	13		14
-1	Bob		21		22		Bob		23		24
-2	Celina	31		32		David	33		34
-3	NaN		NaN		NaN		Ellen	43		44
-```
 
-### 7. 数据归一化
-```
-df = (df - df.min()) / (df.max() - df.min())
-df["A"] = df["A"].apply(np.log1p)
-```
 
-### 8. 线性回归
 
-```
-from sklearn import linear_model
-regr = linear_model.LinearRegression()
-regr.fit(df['x'].values.reshape(-1, 1), df['y'])
-a, b = regr.coef_, regr.intercept\_
-regr.predict(df['x'].values.reshape(-1,1))
-```
 
-### 9. SQL操作
 
-```
-from pandasql import *
-pysqldf = lambda q: sqldf(q, globals())
-q = """select * from data WHERE GROUP BY"""
-df = pysqldf(q)
-```
-
-### 10. 多个相同Dataframe拼接
-
-```
-Folder_Path = r'E:\DD1'  # 要拼接的文件夹及其完整路径，注意不要包含中文
-SaveFile_Path = r'E:\Demand Data 4'  # 拼接后要保存的文件路径
-SaveFile_Name = r'all2.csv'  # 合并后要保存的文件名
-
-# 修改当前工作目录
-os.chdir(Folder_Path)
-# 将该文件夹下的所有文件名存入一个列表
-file_list = os.listdir()
-
-# 读取第一个CSV文件并包含表头
-df = pd.read_csv(Folder_Path + '\\' + file_list[0])  # 编码默认UTF-8，若乱码自行更改
-
-# 将读取的第一个CSV文件写入合并后的文件保存
-df.to_csv(SaveFile_Path + '\\' + SaveFile_Name, encoding="utf_8_sig", index=False)
-
-# 循环遍历列表中各个CSV文件名，并追加到合并后的文件
-for i in range(1, len(file_list)):
-    df = pd.read_csv(Folder_Path + '\\' + file_list[i])
-    df.to_csv(SaveFile_Path + '\\' + SaveFile_Name, encoding="utf_8_sig", index=False, header=False, mode='a+')
-```
 
